@@ -1,96 +1,132 @@
 import telebot
 from telebot import types
+import os
 
-TOKEN = "7386747475:AAGzwWqBEBZApZSm-lPR0JJhX2FGvBEY6Sc"
-bot = telebot.TeleBot(TOKEN)
+# مقداردهی اولیه ربات از محیط (Render)
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+bot = telebot.TeleBot(BOT_TOKEN)
 
-ADMINS = [7935344235, 5993860770]
+# آیدی مدیران اصلی
+MAIN_ADMINS = [7935344235, 5993860770]
 
-# متغیر برای ذخیره مرحله ارسال کانفیگ
-admin_states = {}
-
-@bot.message_handler(commands=["start"])
-def start(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn1 = types.KeyboardButton("💎 خرید اشتراک")
-    btn2 = types.KeyboardButton("📚 آموزش اتصال")
-    btn3 = types.KeyboardButton("🛠 پشتیبانی")
-    markup.add(btn1, btn2, btn3)
-    bot.send_message(message.chat.id, "سلام! به ربات خوش اومدی. از منو یکی رو انتخاب کن:", reply_markup=markup)
-
-@bot.message_handler(func=lambda m: m.text == "💎 خرید اشتراک")
-def buy_plan(message):
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    plans = [
-        ("1️⃣ پلن تک کاربره یک ماهه - 85 تومن", "plan1"),
-        ("2️⃣ پلن دو کاربره یک ماهه - 115 تومن", "plan2"),
-        ("3️⃣ پلن سه کاربره یک ماهه - 169 تومن", "plan3"),
-        ("4️⃣ پلن تک کاربره دو ماهه - 140 تومن", "plan4"),
-        ("5️⃣ پلن دو کاربره دو ماهه - 165 تومن", "plan5"),
-        ("6️⃣ پلن سه کاربره دو ماهه - 185 تومن", "plan6"),
-        ("7️⃣ پلن تک کاربره سه ماهه - 174 تومن", "plan7"),
-        ("8️⃣ پلن دو کاربره سه ماهه - 234 تومن", "plan8"),
-        ("9️⃣ پلن سه کاربره سه ماهه - 335 تومن", "plan9"),
-    ]
-    for plan_text, plan_data in plans:
-        markup.add(types.InlineKeyboardButton(plan_text, callback_data=plan_data))
-    bot.send_message(message.chat.id, "💎 لطفا یکی از پلن‌ها رو انتخاب کن:", reply_markup=markup)
-
-@bot.message_handler(func=lambda m: m.text == "🛠 پشتیبانی")
-def support(message):
-    bot.send_message(message.chat.id, "🔹 برای پشتیبانی با آیدی زیر تماس بگیر:\n\n@Psycho_remix1")
-
-@bot.message_handler(func=lambda m: m.text == "📚 آموزش اتصال")
-def learn(message):
-    bot.send_message(message.chat.id, "🌐 برای آموزش اتصال، به کانال زیر برو:\n\nhttps://t.me/amuzesh_dragonvpn")
-
-@bot.callback_query_handler(func=lambda call: True)
-def callback_query(call):
-    payment_text = (
-        "💳 لطفاً مبلغ صورتحساب رو به شماره کارت زیر واریز کن:\n\n"
-        "🔸 6277601368776066 بنام رضوانی\n\n"
-        "✅ بعد از واریز، فیش واریزی رو ارسال کن تا ادمین بررسی کنه و کانفیگ رو بهت بده.\n\n"
-        "🔴 لطفاً توجه داشته باش مبلغ صورتحساب رو به طور دقیق واریز کنی!"
-    )
-    bot.answer_callback_query(call.id, "✅ اطلاعات پرداخت رو ببین 👇")
-    bot.send_message(call.message.chat.id, payment_text)
-
-# وقتی کاربر فیش واریزی رو ارسال کرد
-@bot.message_handler(content_types=["photo", "document"])
-def handle_payment(message):
-    bot.send_message(message.chat.id, "✅ فیش شما دریافت شد.\n🔎 لطفاً منتظر باشید تا ادمین بررسی کند.")
-
-# پنل مدیریت
-@bot.message_handler(commands=["admin"])
-def admin_panel(message):
-    if message.from_user.id in ADMINS:
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add(types.KeyboardButton("📤 ارسال کانفیگ"))
-        bot.send_message(message.chat.id, "🔐 پنل مدیریت:", reply_markup=markup)
+# آیدی ادمین‌های اضافه‌شده
+def load_admins():
+    if os.path.exists("admins.txt"):
+        with open("admins.txt", "r") as f:
+            return [int(line.strip()) for line in f]
     else:
-        bot.send_message(message.chat.id, "❌ شما ادمین نیستید.")
+        return []
 
-# مدیریت ارسال کانفیگ
-@bot.message_handler(func=lambda m: m.text == "📤 ارسال کانفیگ" and m.from_user.id in ADMINS)
-def send_config_step1(message):
-    bot.send_message(message.chat.id, "🔹 لطفاً آیدی عددی کاربر رو بفرست:")
-    admin_states[message.from_user.id] = "waiting_user_id"
+def save_admin(admin_id):
+    with open("admins.txt", "a") as f:
+        f.write(f"{admin_id}\n")
 
-@bot.message_handler(func=lambda m: admin_states.get(m.from_user.id) == "waiting_user_id")
-def send_config_step2(message):
+# چک کردن دسترسی
+def is_admin(user_id):
+    return user_id in MAIN_ADMINS or user_id in load_admins()
+
+# منوی اصلی کاربر
+def user_menu():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("🛒 خرید اشتراک", "🎓 آموزش اتصال", "🆘 پشتیبانی")
+    return markup
+
+# منوی مدیریت
+def admin_menu(user_id):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("📤 ارسال کانفیگ", "💲 ویرایش پلن‌ها")
+    markup.add("💳 ویرایش شماره کارت")
+    if user_id in MAIN_ADMINS:
+        markup.add("➕ اضافه کردن ادمین")
+    markup.add("🔙 بازگشت")
+    return markup
+
+# شروع ربات
+@bot.message_handler(commands=["start"])
+def start_bot(message):
+    user_id = message.from_user.id
+    if is_admin(user_id):
+        bot.send_message(user_id, "🔐 به پنل مدیریت خوش اومدی!", reply_markup=admin_menu(user_id))
+    else:
+        bot.send_message(user_id, "👋 به ربات خوش اومدی!\n\nیکی از گزینه‌ها رو انتخاب کن:", reply_markup=user_menu())
+
+# هندل کلیدهای عمومی کاربر
+@bot.message_handler(func=lambda m: m.text in ["🛒 خرید اشتراک", "🎓 آموزش اتصال", "🆘 پشتیبانی"])
+def handle_user_buttons(message):
+    if message.text == "🛒 خرید اشتراک":
+        with open("plans.txt", "r", encoding="utf-8") as f:
+            plans = f.read()
+        msg = f"💰 پلن‌های موجود:\n\n{plans}\n\n🔴 لطفاً مبلغ را به شماره کارت زیر واریز کنید:\n6277601368776066 به نام رضوانی\n\n📸 سپس فیش واریزی را ارسال کنید تا ادمین بررسی و کانفیگ را ارسال کند.\n\n⚠️ توجه: مبلغ را دقیق واریز کنید."
+        bot.send_message(message.chat.id, msg)
+    elif message.text == "🎓 آموزش اتصال":
+        bot.send_message(message.chat.id, "📢 آموزش اتصال در این کانال:\nhttps://t.me/amuzesh_dragonvpn")
+    elif message.text == "🆘 پشتیبانی":
+        bot.send_message(message.chat.id, "🆘 ارتباط با پشتیبانی:\n@Psycho_remix1")
+
+# مدیریت برگشت به منو
+@bot.message_handler(func=lambda m: m.text == "🔙 بازگشت")
+def back_to_menu(message):
+    user_id = message.from_user.id
+    if is_admin(user_id):
+        bot.send_message(user_id, "🔙 بازگشت به پنل مدیریت:", reply_markup=admin_menu(user_id))
+    else:
+        bot.send_message(user_id, "🔙 بازگشت به منو:", reply_markup=user_menu())
+
+# 📤 ارسال کانفیگ
+@bot.message_handler(func=lambda m: m.text == "📤 ارسال کانفیگ")
+def send_config(message):
+    user_id = message.from_user.id
+    if is_admin(user_id):
+        msg = bot.send_message(user_id, "🔍 آیدی عددی کاربر رو وارد کن:")
+        bot.register_next_step_handler(msg, get_user_id_for_config)
+
+def get_user_id_for_config(message):
+    user_id_to_send = int(message.text)
+    msg = bot.send_message(message.chat.id, "📦 حالا متن یا کانفیگ رو بفرست:")
+    bot.register_next_step_handler(msg, lambda m: send_config_to_user(m, user_id_to_send))
+
+def send_config_to_user(message, user_id_to_send):
     try:
-        user_id = int(message.text.strip())
-        admin_states[message.from_user.id] = ("waiting_config", user_id)
-        bot.send_message(message.chat.id, "📝 حالا متن یا کانفیگ رو بفرست تا برای کاربر ارسال بشه.")
-    except ValueError:
-        bot.send_message(message.chat.id, "❌ آیدی عددی معتبر نیست. دوباره تلاش کن.")
+        bot.send_message(user_id_to_send, f"📦 کانفیگ دریافتی:\n\n{message.text}")
+        bot.send_message(message.chat.id, "✅ کانفیگ با موفقیت ارسال شد.")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ خطا: {e}")
 
-@bot.message_handler(func=lambda m: isinstance(admin_states.get(m.from_user.id), tuple) and admin_states.get(m.from_user.id)[0] == "waiting_config")
-def send_config_step3(message):
-    _, user_id = admin_states.pop(message.from_user.id)
-    bot.send_message(user_id, f"📥 پیام یا کانفیگ جدید:\n\n{message.text}")
-    bot.send_message(message.chat.id, "✅ کانفیگ با موفقیت برای کاربر ارسال شد.")
+# 💲 ویرایش پلن‌ها
+@bot.message_handler(func=lambda m: m.text == "💲 ویرایش پلن‌ها")
+def edit_plans(message):
+    if is_admin(message.from_user.id):
+        msg = bot.send_message(message.chat.id, "📝 پلن‌های جدید رو وارد کن:")
+        bot.register_next_step_handler(msg, save_plans)
 
-if __name__ == "__main__":
-    print("💥 ربات با موفقیت اجرا شد!")
-    bot.infinity_polling()
+def save_plans(message):
+    with open("plans.txt", "w", encoding="utf-8") as f:
+        f.write(message.text)
+    bot.send_message(message.chat.id, "✅ پلن‌ها به‌روزرسانی شدند.")
+
+# 💳 ویرایش شماره کارت
+@bot.message_handler(func=lambda m: m.text == "💳 ویرایش شماره کارت")
+def edit_card(message):
+    if is_admin(message.from_user.id):
+        msg = bot.send_message(message.chat.id, "💳 شماره کارت جدید رو وارد کن:")
+        bot.register_next_step_handler(msg, save_card)
+
+def save_card(message):
+    with open("card.txt", "w", encoding="utf-8") as f:
+        f.write(message.text)
+    bot.send_message(message.chat.id, "✅ شماره کارت به‌روزرسانی شد.")
+
+# ➕ اضافه کردن ادمین (فقط مدیران اصلی)
+@bot.message_handler(func=lambda m: m.text == "➕ اضافه کردن ادمین")
+def add_admin(message):
+    if message.from_user.id in MAIN_ADMINS:
+        msg = bot.send_message(message.chat.id, "🆕 آیدی عددی ادمین جدید رو وارد کن:")
+        bot.register_next_step_handler(msg, save_new_admin)
+
+def save_new_admin(message):
+    new_admin_id = int(message.text)
+    save_admin(new_admin_id)
+    bot.send_message(message.chat.id, f"✅ ادمین جدید {new_admin_id} اضافه شد.")
+
+# راه‌اندازی ربات
+bot.infinity_polling()
