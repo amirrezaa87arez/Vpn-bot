@@ -1,13 +1,13 @@
+import os
 import telebot
 from telebot import types
 import threading
-import time
 
-# 🟡 توکن ربات
-TOKEN = "توکن خودت"
+# 🟡 توکن ربات از محیط
+TOKEN = os.environ.get("TOKEN")
 
-# 🟡 آیدی مدیر
-ADMIN_ID = 123456789  # جایگزین کن!
+# 🟡 آیدی‌های مدیر
+ADMIN_IDS = [7935344235, 5993860770]
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -31,7 +31,7 @@ def handle_start(message):
 @bot.message_handler(func=lambda m: m.text == "💳 خرید اشتراک 💳")
 def handle_buy(message):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-    
+
     kb.add(types.KeyboardButton("1️⃣ پلن تک کاربره نامحدود ۱ ماهه - 85T"))
     kb.add(types.KeyboardButton("2️⃣ پلن دو کاربره نامحدود ۱ ماهه - 115T"))
     kb.add(types.KeyboardButton("3️⃣ پلن سه کاربره نامحدود ۱ ماهه - 169T"))
@@ -57,11 +57,11 @@ def handle_help(message):
                 "3️⃣ رسید رو به پشتیبانی بفرست!"
     bot.send_message(message.chat.id, help_text)
 
-# ▶️ دکمه پشتیبانی
+# ▶️ دکمه پشتیبانی با آیدی تو
 @bot.message_handler(func=lambda m: m.text == "🛠 پشتیبانی")
 def handle_support(message):
     support_text = "🛠 برای پشتیبانی به آیدی زیر پیام بده:\n" \
-                   f"👉 @username (یا لینک دلخواهت)"
+                   "👉 @Psycho_remix1"
     bot.send_message(message.chat.id, support_text)
 
 # ▶️ دکمه بازگشت به منو
@@ -69,7 +69,7 @@ def handle_support(message):
 def handle_back(message):
     send_main_menu(message)
 
-# ▶️ گرفتن هر متنی که جزو دکمه‌ها نیست
+# ▶️ پیام‌های ناشناخته
 @bot.message_handler(func=lambda m: True)
 def handle_other(message):
     bot.send_message(message.chat.id, "❌ این گزینه موجود نیست. از منو استفاده کن!")
