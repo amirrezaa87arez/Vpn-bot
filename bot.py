@@ -2,125 +2,102 @@ import telebot
 from telebot import types
 import json
 import os
-from fastapi import FastAPI
-import uvicorn
-import threading
 
-TOKEN = os.environ.get("BOT_TOKEN")
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+bot = telebot.TeleBot(BOT_TOKEN)
+
 ADMIN_IDS = ["7935344235", "5993860770"]
 
-bot = telebot.TeleBot(TOKEN)
-USERS_FILE = 'users.json'
-pending_configs = {}
-
-app = FastAPI()
-
-@app.get("/")
-def home():
-    return {"status": "Bot is running!"}
+USERS_FILE = "users.json"
 
 def load_users():
     if not os.path.exists(USERS_FILE):
-        with open(USERS_FILE, 'w') as f:
-            json.dump({}, f)
-    with open(USERS_FILE, 'r') as f:
+        return {}
+    with open(USERS_FILE, "r") as f:
         return json.load(f)
 
 def save_users(users):
-    with open(USERS_FILE, 'w') as f:
+    with open(USERS_FILE, "w") as f:
         json.dump(users, f)
 
-def get_or_create_user_id(telegram_id):
+def add_user(user_id):
     users = load_users()
-    for uid, tid in users.items():
-        if tid == telegram_id:
-            return uid
-    new_id = str(1000 + len(users) + 1)
-    users[new_id] = telegram_id
-    save_users(users)
-    return new_id
+    if str(user_id) not in users.values():
+        new_id = str(max([int(k) for k in users.keys()], default=1000) + 1)
+        users[new_id] = user_id
+        save_users(users)
 
 def main_menu(is_admin=False):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row("خرید اشتراک 💳", "آموزش اتصال 📘")
     if is_admin:
         kb.row("📤 ارسال کانفیگ")
+    kb.row("🆘 پشتیبانی")  # دکمه جدید پشتیبانی
     return kb
 
-plans_text = """💳 لیست پلن‌ها:
-
-1️⃣ پلن تک کاربره نامحدود یک ماهه - 85 تومن
-2️⃣ پلن دو کاربره نامحدود یک ماهه - 115 تومن
-3️⃣ پلن سه کاربره نامحدود یک ماهه - 169 تومن
-
-4️⃣ پلن تک کاربره نامحدود دو ماهه - 140 تومن
-5️⃣ پلن دو کاربره نامحدود دو ماهه - 165 تومن
-6️⃣ پلن سه کاربره نامحدود دو ماهه - 185 تومن
-
-7️⃣ پلن تک کاربره نامحدود سه ماهه - 174 تومن
-8️⃣ پلن دو کاربره نامحدود سه ماهه - 234 تومن
-9️⃣ پلن سه کاربره نامحدود سه ماهه - 335 تومن"""
-
-@bot.message_handler(commands=['start'])
-def handle_start(message):
-    user_id = get_or_create_user_id(message.from_user.id)
-    is_admin = str(message.from_user.id) in ADMIN_IDS
+@bot.message_handler(commands=["start"])
+def start(message):
+    user_id = message.from_user.id
+    add_user(user_id)
+    is_admin = str(user_id) in ADMIN_IDS
     bot.send_message(
         message.chat.id,
-        f"🌟 خوش آمدید! آیدی عددی شما: {user_id}",
+        "سلام! به ربات خوش اومدی 😊\n\nاز منو استفاده کن 👇",
         reply_markup=main_menu(is_admin)
     )
 
-@bot.message_handler(func=lambda m: m.text == "آموزش اتصال 📘")
-def handle_amoozesh(message):
-    bot.send_message(message.chat.id, "📘 آموزش اتصال: https://t.me/amuzesh_dragonvpn")
+@bot.message_handler(func=lambda m: m.text == "🆘 پشتیبانی")
+def handle_support(message):
+    bot.send_message(
+        message.chat.id,
+        "💬 برای پشتیبانی با ادمین تماس بگیرید:\n@korosh_dev"
+    )
 
 @bot.message_handler(func=lambda m: m.text == "خرید اشتراک 💳")
 def handle_buy(message):
-    bot.send_message(message.chat.id, plans_text)
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.row("پلن ۱️⃣ (۱ ماهه - 85T)", "پلن ۲️⃣ (۲ ماهه - 140T)")
+    kb.row("پلن ۳️⃣ (۳ ماهه - 174T)")
+    kb.row("🔙 بازگشت به منو")
+    bot.send_message(message.chat.id, "💳 یکی از پلن‌های زیر رو انتخاب کن:", reply_markup=kb)
+
+@bot.message_handler(func=lambda m: m.text.startswith("پلن"))
+def handle_plan_choice(message):
+    bot.send_message(
+        message.chat.id,
+        f"✅ انتخاب شما: {message.text}\n\n💳 لطفاً مبلغ رو به کارت زیر واریز کنید:\n\n💳 کارت: 6037997512345678\n💬 بعد از واریز، فیش رو بفرستید."
+    )
+
+@bot.message_handler(func=lambda m: m.text == "🔙 بازگشت به منو")
+def back_to_menu(message):
+    is_admin = str(message.from_user.id) in ADMIN_IDS
+    bot.send_message(message.chat.id, "🔙 بازگشت به منو", reply_markup=main_menu(is_admin))
+
+@bot.message_handler(func=lambda m: m.text == "آموزش اتصال 📘")
+def send_instructions(message):
+    bot.send_message(
+        message.chat.id,
+        "📘 آموزش اتصال:\n1️⃣ دانلود اپلیکیشن\n2️⃣ وارد کردن کانفیگ\n3️⃣ اتصال به سرور\n\n👀 مشکلی داشتی، به پشتیبانی پیام بده."
+    )
 
 @bot.message_handler(func=lambda m: m.text == "📤 ارسال کانفیگ")
-def start_send_config(message):
+def send_config(message):
     if str(message.from_user.id) not in ADMIN_IDS:
-        bot.send_message(message.chat.id, "⛔️ شما دسترسی ندارید.")
+        bot.send_message(message.chat.id, "❌ فقط ادمین به این بخش دسترسی داره!")
         return
-    bot.send_message(message.chat.id, "🆔 آیدی عددی کاربر را وارد کنید:")
-    bot.register_next_step_handler(message, get_config_text)
 
-def get_config_text(message):
-    target_id = message.text.strip()
+    msg = bot.send_message(message.chat.id, "🔗 کانفیگ رو بفرست:")
+    bot.register_next_step_handler(msg, handle_config)
+
+def handle_config(message):
+    config_text = message.text
     users = load_users()
-    if target_id not in users:
-        bot.send_message(message.chat.id, "❌ آیدی عددی نامعتبر است.")
-        return
-    pending_configs[message.chat.id] = target_id
-    bot.send_message(message.chat.id, "✉️ پیام یا کانفیگ موردنظر را ارسال کنید:")
-    bot.register_next_step_handler(message, send_config_to_user)
+    for uid in users.values():
+        bot.send_message(uid, f"🔗 کانفیگ جدید:\n\n{config_text}")
+    bot.send_message(message.chat.id, "✅ کانفیگ برای همه کاربرها ارسال شد!")
 
-def send_config_to_user(message):
-    target_numeric = pending_configs.get(message.chat.id)
-    users = load_users()
-    if not target_numeric or target_numeric not in users:
-        bot.send_message(message.chat.id, "❌ مشکلی پیش آمده.")
-        return
-    telegram_id = users[target_numeric]
-    bot.send_message(telegram_id, f"🔑 کانفیگ شما: {message.text}")
-    bot.send_message(message.chat.id, "✅ پیام با موفقیت ارسال شد.")
-
-@bot.message_handler(content_types=['photo', 'document'])
-def handle_receipt(message):
-    user_id = get_or_create_user_id(message.from_user.id)
-    bot.reply_to(message, "🕐 فیش شما دریافت شد. لطفاً چند لحظه صبر کنید تا بررسی و تایید شود.")
-    caption = f"🧾 کاربر با آیدی عددی {user_id} یک فیش ارسال کرد."
-    for admin_id in ADMIN_IDS:
-        if message.content_type == 'photo':
-            bot.send_photo(admin_id, message.photo[-1].file_id, caption=caption)
-        elif message.content_type == 'document':
-            bot.send_document(admin_id, message.document.file_id, caption=caption)
-
-def start_bot():
+def main():
     bot.infinity_polling()
 
 if __name__ == "__main__":
-    threading.Thread(target=start_bot).start()
-    uvicorn.run(app, host="0.0.0.0", port=10000)
+    main()
