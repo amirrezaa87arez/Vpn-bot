@@ -1,80 +1,54 @@
-import os
 import telebot
 from telebot import types
-import threading
 
-# 🟡 توکن ربات از محیط
-TOKEN = os.environ.get("TOKEN")
-
-# 🟡 آیدی‌های مدیر
-ADMIN_IDS = [7935344235, 5993860770]
-
+# 🔥 توکن مستقیم (برای جلوگیری از ارور)
+TOKEN = "7386747475:AAHKaQ37fCEhlb628U7DlJWIwgWAp1po5eg"
 bot = telebot.TeleBot(TOKEN)
 
-# ▶️ تابع شروع ربات
-def start_bot():
-    bot.infinity_polling()
+# 🔥 لیست آیدی ادمین‌ها
+ADMINS = [7935344235, 5993860770]
 
-# ▶️ منوی اصلی
-def send_main_menu(message):
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add(types.KeyboardButton("💳 خرید اشتراک 💳"))
-    kb.add(types.KeyboardButton("💡 راهنما"), types.KeyboardButton("🛠 پشتیبانی"))
-    bot.send_message(message.chat.id, "🔷 به منوی اصلی خوش اومدی! یکی از گزینه‌ها رو انتخاب کن:", reply_markup=kb)
+# شروع
+@bot.message_handler(commands=["start"])
+def start(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn1 = types.KeyboardButton("💎 خرید اشتراک")
+    btn2 = types.KeyboardButton("🛠 پشتیبانی")
+    markup.add(btn1, btn2)
+    bot.send_message(message.chat.id, "سلام! به ربات خوش اومدی. دکمه مورد نظر رو انتخاب کن:", reply_markup=markup)
 
-# ▶️ استارت
-@bot.message_handler(commands=['start'])
-def handle_start(message):
-    send_main_menu(message)
+# خرید اشتراک
+@bot.message_handler(func=lambda m: m.text == "💎 خرید اشتراک")
+def buy_plan(message):
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    plans = [
+        ("1️⃣ پلن تک کاربره یک ماهه - 85 تومن", "plan1"),
+        ("2️⃣ پلن دو کاربره یک ماهه - 115 تومن", "plan2"),
+        ("3️⃣ پلن سه کاربره یک ماهه - 169 تومن", "plan3"),
+        ("4️⃣ پلن تک کاربره دو ماهه - 140 تومن", "plan4"),
+        ("5️⃣ پلن دو کاربره دو ماهه - 165 تومن", "plan5"),
+        ("6️⃣ پلن سه کاربره دو ماهه - 185 تومن", "plan6"),
+        ("7️⃣ پلن تک کاربره سه ماهه - 174 تومن", "plan7"),
+        ("8️⃣ پلن دو کاربره سه ماهه - 234 تومن", "plan8"),
+        ("9️⃣ پلن سه کاربره سه ماهه - 335 تومن", "plan9"),
+    ]
+    for plan_text, plan_data in plans:
+        markup.add(types.InlineKeyboardButton(plan_text, callback_data=plan_data))
+    bot.send_message(message.chat.id, "💎 لطفا یکی از پلن‌ها رو انتخاب کن:", reply_markup=markup)
 
-# ▶️ دکمه خرید اشتراک با پلن‌های دکمه‌ای
-@bot.message_handler(func=lambda m: m.text == "💳 خرید اشتراک 💳")
-def handle_buy(message):
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-
-    kb.add(types.KeyboardButton("1️⃣ پلن تک کاربره نامحدود ۱ ماهه - 85T"))
-    kb.add(types.KeyboardButton("2️⃣ پلن دو کاربره نامحدود ۱ ماهه - 115T"))
-    kb.add(types.KeyboardButton("3️⃣ پلن سه کاربره نامحدود ۱ ماهه - 169T"))
-
-    kb.add(types.KeyboardButton("4️⃣ پلن تک کاربره نامحدود ۲ ماهه - 140T"))
-    kb.add(types.KeyboardButton("5️⃣ پلن دو کاربره نامحدود ۲ ماهه - 165T"))
-    kb.add(types.KeyboardButton("6️⃣ پلن سه کاربره نامحدود ۲ ماهه - 185T"))
-
-    kb.add(types.KeyboardButton("7️⃣ پلن تک کاربره نامحدود ۳ ماهه - 174T"))
-    kb.add(types.KeyboardButton("8️⃣ پلن دو کاربره نامحدود ۳ ماهه - 234T"))
-    kb.add(types.KeyboardButton("9️⃣ پلن سه کاربره نامحدود ۳ ماهه - 335T"))
-
-    kb.add(types.KeyboardButton("🔙 بازگشت به منو"))
-
-    bot.send_message(message.chat.id, "💳 یکی از پلن‌های زیر رو انتخاب کن:", reply_markup=kb)
-
-# ▶️ دکمه راهنما
-@bot.message_handler(func=lambda m: m.text == "💡 راهنما")
-def handle_help(message):
-    help_text = "📌 راهنمای استفاده:\n" \
-                "1️⃣ یکی از پلن‌ها رو انتخاب کن.\n" \
-                "2️⃣ مبلغ رو پرداخت کن.\n" \
-                "3️⃣ رسید رو به پشتیبانی بفرست!"
-    bot.send_message(message.chat.id, help_text)
-
-# ▶️ دکمه پشتیبانی با آیدی تو
+# پشتیبانی
 @bot.message_handler(func=lambda m: m.text == "🛠 پشتیبانی")
-def handle_support(message):
-    support_text = "🛠 برای پشتیبانی به آیدی زیر پیام بده:\n" \
-                   "👉 @Psycho_remix1"
+def support(message):
+    support_text = "برای پشتیبانی با آیدی زیر در تماس باش:\n\n@Psycho_remix1"
     bot.send_message(message.chat.id, support_text)
 
-# ▶️ دکمه بازگشت به منو
-@bot.message_handler(func=lambda m: m.text == "🔙 بازگشت به منو")
-def handle_back(message):
-    send_main_menu(message)
+# کال‌بک پلن‌ها
+@bot.callback_query_handler(func=lambda call: True)
+def callback_query(call):
+    bot.answer_callback_query(call.id, "✅ برای خرید با آیدی پشتیبانی تماس بگیر: @Psycho_remix1")
+    bot.send_message(call.message.chat.id, f"🔹 شما پلن {call.data} رو انتخاب کردی.\n\n🔸 برای خرید، به پشتیبانی پیام بده:\n@Psycho_remix1")
 
-# ▶️ پیام‌های ناشناخته
-@bot.message_handler(func=lambda m: True)
-def handle_other(message):
-    bot.send_message(message.chat.id, "❌ این گزینه موجود نیست. از منو استفاده کن!")
-
-# ▶️ اجرای ربات در ترد جداگانه
+# اجرای بات
 if __name__ == "__main__":
-    t = threading.Thread(target=start_bot)
-    t.start()
+    print("ربات در حال اجراست...")
+    bot.infinity_polling()
