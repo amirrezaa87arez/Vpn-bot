@@ -1,15 +1,23 @@
-
 import telebot
 from telebot import types
 import json
 import os
+from fastapi import FastAPI
+import uvicorn
+import threading
 
 TOKEN = os.environ.get("BOT_TOKEN")
-ADMIN_IDS = os.environ.get("ADMIN_IDS", "").split(",")
+ADMIN_IDS = ["7935344235", "5993860770"]
 
 bot = telebot.TeleBot(TOKEN)
 USERS_FILE = 'users.json'
 pending_configs = {}
+
+app = FastAPI()
+
+@app.get("/")
+def home():
+    return {"status": "Bot is running!"}
 
 def load_users():
     if not os.path.exists(USERS_FILE):
@@ -110,5 +118,9 @@ def handle_receipt(message):
         elif message.content_type == 'document':
             bot.send_document(admin_id, message.document.file_id, caption=caption)
 
-bot.remove_webhook()
-bot.infinity_polling()
+def start_bot():
+    bot.infinity_polling()
+
+if __name__ == "__main__":
+    threading.Thread(target=start_bot).start()
+    uvicorn.run(app, host="0.0.0.0", port=10000)
