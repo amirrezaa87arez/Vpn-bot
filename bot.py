@@ -1,8 +1,8 @@
 import telebot
 from telebot import types
 
-# 🔥 توکن مستقیم (برای جلوگیری از ارور)
-TOKEN = "7386747475:AAHKaQ37fCEhlb628U7DlJWIwgWAp1po5eg"
+# 🔥 توکن جدید!
+TOKEN = "7386747475:AAGzwWqBEBZApZSm-lPR0JJhX2FGvBEY6Sc"
 bot = telebot.TeleBot(TOKEN)
 
 # 🔥 لیست آیدی ادمین‌ها
